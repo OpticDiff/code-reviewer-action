@@ -1,0 +1,155 @@
+name: 'code-reviewer-action'
+description: 'Reusable GitHub Action for AI-powered code review'
+author: 'OpticDiff'
+
+branding:
+  icon: 'eye'
+  color: 'blue'
+
+inputs:
+  version:
+    description: 'code-reviewer version to install'
+    required: false
+    default: '0.7.0'
+  model:
+    description: 'Model ID'
+    required: false
+    default: 'gemini-2.5-flash'
+  focus:
+    description: 'Review focus areas'
+    required: false
+    default: 'all'
+  min-severity:
+    description: 'Minimum severity'
+    required: false
+    default: 'low'
+  sarif:
+    description: 'SARIF output path (empty = disabled)'
+    required: false
+    default: ''
+  extra-args:
+    description: 'Additional CLI flags'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install code-reviewer
+      id: install
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      run: |
+        VERSION="${INPUT_VERSION#v}"
+        TAG="v${VERSION}"
+
+        case "${RUNNER_OS:-$(uname -s)}" in
+          Linux|linux)
+            OS="linux"
+            EXT="tar.gz"
+            ;;
+          macOS|Darwin|darwin)
+            OS="darwin"
+            EXT="tar.gz"
+            ;;
+          Windows|windows|MINGW*|MSYS*|CYGWIN*)
+            OS="windows"
+            EXT="zip"
+            ;;
+          *)
+            echo "::error::Unsupported OS: ${RUNNER_OS:-$(uname -s)}"
+            exit 1
+            ;;
+        esac
+
+        case "${RUNNER_ARCH:-$(uname -m)}" in
+          X64|x86_64|amd64)
+            ARCH="amd64"
+            ;;
+          ARM64|aarch64|arm64)
+            ARCH="arm64"
+            ;;
+          *)
+            echo "::error::Unsupported architecture: ${RUNNER_ARCH:-$(uname -m)}"
+            exit 1
+            ;;
+        esac
+
+        ARCHIVE_NAME="code-reviewer_${VERSION}_${OS}_${ARCH}.${EXT}"
+        DOWNLOAD_URL="https://github.com/OpticDiff/code-reviewer/releases/download/${TAG}/${ARCHIVE_NAME}"
+        CHECKSUMS_URL="https://github.com/OpticDiff/code-reviewer/releases/download/${TAG}/checksums.txt"
+
+        INSTALL_DIR="${RUNNER_TEMP:-/tmp}/code-reviewer/bin"
+        mkdir -p "$INSTALL_DIR"
+
+        TMP_DIR="$(mktemp -d)"
+        cd "$TMP_DIR"
+
+        echo "Downloading code-reviewer ${TAG} (${ARCHIVE_NAME})..."
+        curl -sSLf "$DOWNLOAD_URL" -o "$ARCHIVE_NAME"
+        curl -sSLf "$CHECKSUMS_URL" -o checksums.txt
+
+        echo "Verifying checksum..."
+        if command -v sha256sum >/dev/null 2>&1; then
+          grep "$ARCHIVE_NAME" checksums.txt | sha256sum -c -
+        elif command -v shasum >/dev/null 2>&1; then
+          grep "$ARCHIVE_NAME" checksums.txt | shasum -a 256 -c -
+        else
+          echo "::warning::Neither sha256sum nor shasum is available; skipping checksum verification"
+        fi
+
+        echo "Extracting ${ARCHIVE_NAME}..."
+        if [ "$EXT" = "zip" ]; then
+          unzip -q -o "$ARCHIVE_NAME" -d "$INSTALL_DIR"
+        else
+          tar -xzf "$ARCHIVE_NAME" -C "$INSTALL_DIR"
+        fi
+
+        chmod +x "$INSTALL_DIR/code-reviewer"*
+        echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+        echo "code-reviewer installed successfully to $INSTALL_DIR"
+
+    - name: Run code-reviewer
+      id: review
+      shell: bash
+      env:
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_FOCUS: ${{ inputs.focus }}
+        INPUT_MIN_SEVERITY: ${{ inputs.min-severity }}
+        INPUT_SARIF: ${{ inputs.sarif }}
+        INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
+      run: |
+        ARGS=("--ci")
+
+        if [ -n "$INPUT_MODEL" ]; then
+          ARGS+=("--model" "$INPUT_MODEL")
+        fi
+
+        if [ -n "$INPUT_FOCUS" ]; then
+          ARGS+=("--focus" "$INPUT_FOCUS")
+        fi
+
+        if [ -n "$INPUT_MIN_SEVERITY" ]; then
+          ARGS+=("--min-severity" "$INPUT_MIN_SEVERITY")
+        fi
+
+        if [ -n "$INPUT_SARIF" ]; then
+          ARGS+=("--sarif" "$INPUT_SARIF")
+        fi
+
+        if [ -n "$INPUT_EXTRA_ARGS" ]; then
+          eval "EXTRA_FLAGS=($INPUT_EXTRA_ARGS)"
+          ARGS+=("${EXTRA_FLAGS[@]}")
+        fi
+
+        echo "Executing: code-reviewer ${ARGS[*]}"
+        code-reviewer "${ARGS[@]}"
+
+    - name: Upload SARIF report
+      if: ${{ inputs.sarif != '' }}
+      uses: github/codeql-action/upload-sarif@v3
+      continue-on-error: true
+      with:
+        sarif_file: ${{ inputs.sarif }}
+        category: code-reviewer

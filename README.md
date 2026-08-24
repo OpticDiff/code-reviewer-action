@@ -1,0 +1,197 @@
+# code-reviewer-action
+
+Reusable GitHub Action for AI-powered code review powered by [OpticDiff/code-reviewer](https://github.com/OpticDiff/code-reviewer).
+
+Analyzes pull request diffs, provides repo-aware context, identifies bugs, security vulnerabilities, and performance issues, and posts actionable inline comments with native suggestion blocks.
+
+---
+
+## Quick Start (Zero Auth with Ollama)
+
+Run a local or runner-hosted Ollama model without needing any cloud credentials or API keys:
+
+```yaml
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Start Ollama & pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull qwen3:8b
+
+      - uses: OpticDiff/code-reviewer-action@v1
+        with:
+          model: qwen3:8b
+          extra-args: --api-url http://localhost:11434/v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+---
+
+## Authentication & Provider Examples
+
+### 1. Vertex AI (Recommended)
+
+Authenticate using Google Cloud Workload Identity Federation (WIF) — no long-lived service account keys required.
+
+```yaml
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+      security-events: write # required if uploading SARIF
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SA }}
+
+      - uses: OpticDiff/code-reviewer-action@v1
+        with:
+          model: gemini-2.5-flash
+          focus: all
+          min-severity: low
+          sarif: results.sarif
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### 2. Self-Hosted (vLLM / Cloud Run)
+
+Connect to any OpenAI-compatible server such as vLLM, TGI, or a model hosted on Cloud Run:
+
+#### vLLM / Internal Server
+```yaml
+- uses: OpticDiff/code-reviewer-action@v1
+  with:
+    model: meta-llama/Llama-3.3-70B-Instruct
+    extra-args: --api-url https://vllm.internal.example.com/v1 --api-key ${{ secrets.VLLM_API_KEY }}
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### Cloud Run Endpoint
+```yaml
+- uses: google-github-actions/auth@v2
+  with:
+    workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+    service_account: ${{ secrets.WIF_SA }}
+
+- uses: OpticDiff/code-reviewer-action@v1
+  with:
+    model: custom-model
+    extra-args: --api-url https://code-reviewer-proxy-xyz.a.run.app/v1
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### 3. AWS Bedrock (via LiteLLM Proxy)
+
+To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an OpenAI-compatible proxy such as [LiteLLM](https://github.com/BerriAI/litellm):
+
+```yaml
+- uses: OpticDiff/code-reviewer-action@v1
+  with:
+    model: bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0
+    extra-args: --api-url http://litellm-proxy.internal:4000/v1 --api-key ${{ secrets.LITELLM_API_KEY }}
+  env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+---
+
+## Model Quality Comparison
+
+| Model | Tier | Context | Notes |
+|---|---|---|---|
+| `qwen3:8b` | Demo | 32k | Local/Ollama, fast, lower quality |
+| `qwen3:32b` | Good | 32k | Local/Ollama, needs 32GB RAM |
+| `gemini-2.5-flash` | Recommended | 1M | Fast, excellent quality, Vertex AI |
+| `gemini-2.5-pro` | Best | 1M | Deepest analysis, Vertex AI |
+| `claude-sonnet-4` | Best | 200k | Excellent for code, Vertex AI |
+| Any OpenAI-compat | Varies | Varies | Via `--api-url` |
+
+---
+
+## Action Inputs
+
+| Input | Description | Default | Required |
+|---|---|---|---|
+| `version` | `code-reviewer` binary version to install from releases | `0.7.0` | No |
+| `model` | Model ID to use for analysis | `gemini-2.5-flash` | No |
+| `focus` | Review focus areas (`bugs`, `security`, `performance`, `style`, `docs`, `all`) | `all` | No |
+| `min-severity` | Minimum severity to report (`low`, `medium`, `high`, `critical`) | `low` | No |
+| `sarif` | SARIF output file path. When set, SARIF report is generated and uploaded | `""` | No |
+| `extra-args` | Additional CLI flags passed directly to `code-reviewer` | `""` | No |
+
+---
+
+## Advanced Examples
+
+### Multi-Model Consensus Review
+
+Run multiple models in parallel and only post findings where models agree:
+
+```yaml
+- uses: OpticDiff/code-reviewer-action@v1
+  with:
+    extra-args: --models gemini-2.5-flash,claude-sonnet-4 --consensus-threshold 2
+  env:
+    GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Incremental Review & PR Description Updates
+
+Only review files modified in the latest push, and update the PR description with a concise summary:
+
+```yaml
+- uses: OpticDiff/code-reviewer-action@v1
+  with:
+    model: gemini-2.5-flash
+    extra-args: --incremental --update-description
+  env:
+    GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+---
+
+## Documentation & Source
+
+For full CLI documentation, configuration files (`.code-reviewer.yaml`, `REVIEW.md`), and issue tracking, visit the main repository:
+
+👉 **[https://github.com/OpticDiff/code-reviewer](https://github.com/OpticDiff/code-reviewer)**

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-yaml:
+    name: Validate Action YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate YAML files
+        run: |
+          python -c "
+          import sys
+          import glob
+          import yaml
+
+          files = ['action.yml'] + glob.glob('.github/workflows/*.yml') + glob.glob('.github/workflows/*.yaml')
+          errors = 0
+
+          for file_path in files:
+              print(f'Checking {file_path}...')
+              try:
+                  with open(file_path, 'r', encoding='utf-8') as f:
+                      yaml.safe_load(f)
+                  print(f'  ✓ Valid YAML: {file_path}')
+              except Exception as e:
+                  print(f'  ✗ Invalid YAML: {file_path}: {e}', file=sys.stderr)
+                  errors += 1
+
+          if errors > 0:
+              sys.exit(1)
+          print('\nAll YAML files validated successfully.')
+          "
