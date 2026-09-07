@@ -1,8 +1,29 @@
-# code-reviewer-action
+<div align="center">
+  <img src="https://raw.githubusercontent.com/OpticDiff/.github/main/assets/opticdiff-banner.svg" alt="OpticDiff code-reviewer-action" width="100%" />
 
-Reusable GitHub Action for AI-powered code review powered by [OpticDiff/code-reviewer](https://github.com/OpticDiff/code-reviewer).
+  <br />
+  <br />
 
-Analyzes pull request diffs, provides repo-aware context, identifies bugs, security vulnerabilities, and performance issues, and posts actionable inline comments with native suggestion blocks.
+  <h1>code-reviewer-action</h1>
+  <p><strong>Reusable GitHub Action for fast, local-first AI code reviews powered by <a href="https://github.com/OpticDiff/code-reviewer">OpticDiff/code-reviewer</a>.</strong></p>
+
+  <p>
+    <a href="https://github.com/OpticDiff/code-reviewer-action/releases"><img src="https://img.shields.io/github/v/release/OpticDiff/code-reviewer-action?color=blue&label=action" alt="Action Release" /></a>
+    <a href="https://github.com/OpticDiff/code-reviewer/releases"><img src="https://img.shields.io/github/v/release/OpticDiff/code-reviewer?color=blue&label=cli" alt="CLI Release" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/OpticDiff/code-reviewer-action" alt="License" /></a>
+    <a href="https://github.com/marketplace"><img src="https://img.shields.io/badge/marketplace-code--reviewer--action-blue?logo=github" alt="Marketplace" /></a>
+  </p>
+</div>
+
+---
+
+Analyzes pull request diffs, provides repo-aware Tree-sitter context, eliminates hallucinations via multi-model consensus, flags bugs and security vulnerabilities, and posts actionable inline comments with native GitHub suggestion blocks.
+
+- 🔒 **Zero 3rd-Party SaaS Lock-in**: Run self-hosted with Ollama or vLLM directly on runner, or via private cloud endpoints (Vertex AI, AWS Bedrock).
+- 🎯 **Multi-Model Consensus**: Run multiple models (e.g. Gemini + Claude) and only post findings they both agree on.
+- ⚡ **Smart Diff Caching**: Cryptographically hashes diffs so re-runs on pushed PRs only analyze new changes.
+- 🛡️ **Safe Auto-Approve**: Automatically approve clean PRs using 9 strict safety guards (SHA pinned).
+- 📊 **GitHub Security Tab**: Native SARIF 2.1.0 report generation and Code Scanning upload.
 
 ---
 
@@ -150,7 +171,7 @@ To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an Ope
 
 | Input | Description | Default | Required |
 |---|---|---|---|
-| `version` | `code-reviewer` binary version to install from releases | `0.7.0` | No |
+| `version` | `code-reviewer` binary version to install from releases | `0.8.0` | No |
 | `model` | Model ID to use for analysis | `gemini-2.5-flash` | No |
 | `focus` | Review focus areas (`bugs`, `security`, `performance`, `style`, `docs`, `all`) | `all` | No |
 | `min-severity` | Minimum severity to report (`low`, `medium`, `high`, `critical`) | `low` | No |
