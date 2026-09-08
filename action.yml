@@ -10,7 +10,7 @@ inputs:
   version:
     description: 'code-reviewer version to install'
     required: false
-    default: '0.9.0'
+    default: '0.10.0'
   model:
     description: 'Model ID'
     required: false
@@ -25,6 +25,14 @@ inputs:
     default: 'low'
   sarif:
     description: 'SARIF output path (empty = disabled)'
+    required: false
+    default: ''
+  platform-config:
+    description: 'Path, glob, or comma-separated list of platform configuration files'
+    required: false
+    default: ''
+  platform-review-md:
+    description: 'Path, glob, or comma-separated list of platform markdown guideline files'
     required: false
     default: ''
   extra-args:
@@ -118,6 +126,8 @@ runs:
         INPUT_FOCUS: ${{ inputs.focus }}
         INPUT_MIN_SEVERITY: ${{ inputs.min-severity }}
         INPUT_SARIF: ${{ inputs.sarif }}
+        INPUT_PLATFORM_CONFIG: ${{ inputs.platform-config }}
+        INPUT_PLATFORM_REVIEW_MD: ${{ inputs.platform-review-md }}
         INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         ARGS=("--ci")
@@ -136,6 +146,14 @@ runs:
 
         if [ -n "$INPUT_SARIF" ]; then
           ARGS+=("--sarif" "$INPUT_SARIF")
+        fi
+
+        if [ -n "$INPUT_PLATFORM_CONFIG" ]; then
+          ARGS+=("--platform-config" "$INPUT_PLATFORM_CONFIG")
+        fi
+
+        if [ -n "$INPUT_PLATFORM_REVIEW_MD" ]; then
+          ARGS+=("--platform-review-md" "$INPUT_PLATFORM_REVIEW_MD")
         fi
 
         if [ -n "$INPUT_EXTRA_ARGS" ]; then
