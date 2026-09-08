@@ -213,12 +213,13 @@ Only review files modified in the latest push, and update the PR description wit
 
 ### Enterprise Platform Governance (Central Policies)
 
-Enforce mandatory platform rules (e.g. security mandates, monotonic severity floor) from an organization repository without letting individual repos overrule them:
+Enforce mandatory platform rules (e.g. security mandates, monotonic severity floor) from an organization repository without letting individual repos overrule them (pass a read token if the central policy repository is private):
 
 ```yaml
 - uses: actions/checkout@v4
   with:
     repository: my-org/platform-governance
+    token: ${{ secrets.PLATFORM_REPO_TOKEN }} # required if private/internal
     path: .platform-central
 
 - uses: OpticDiff/code-reviewer-action@v1
