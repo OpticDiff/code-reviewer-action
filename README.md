@@ -171,11 +171,13 @@ To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an Ope
 
 | Input | Description | Default | Required |
 |---|---|---|---|
-| `version` | `code-reviewer` binary version to install from releases | `0.9.0` | No |
+| `version` | `code-reviewer` binary version to install from releases | `0.10.0` | No |
 | `model` | Model ID to use for analysis | `gemini-2.5-flash` | No |
 | `focus` | Review focus areas (`bugs`, `security`, `performance`, `style`, `docs`, `all`) | `all` | No |
 | `min-severity` | Minimum severity to report (`low`, `medium`, `high`, `critical`) | `low` | No |
 | `sarif` | SARIF output file path. When set, SARIF report is generated and uploaded | `""` | No |
+| `platform-config` | Path, glob, or comma-separated platform config files (`.yaml`) | `""` | No |
+| `platform-review-md` | Path, glob, or comma-separated platform guideline files (`.md`) | `""` | No |
 | `extra-args` | Additional CLI flags passed directly to `code-reviewer` | `""` | No |
 
 ---
@@ -204,6 +206,25 @@ Only review files modified in the latest push, and update the PR description wit
   with:
     model: gemini-2.5-flash
     extra-args: --incremental --update-description
+  env:
+    GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Enterprise Platform Governance (Central Policies)
+
+Enforce mandatory platform rules (e.g. security mandates, monotonic severity floor) from an organization repository without letting individual repos overrule them:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    repository: my-org/platform-governance
+    path: .platform-central
+
+- uses: OpticDiff/code-reviewer-action@v1
+  with:
+    platform-config: ".platform-central/rules/*.yaml"
+    platform-review-md: ".platform-central/GUIDELINES.md"
   env:
     GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
