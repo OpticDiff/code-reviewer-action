@@ -171,7 +171,7 @@ To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an Ope
 
 | Input | Description | Default | Required |
 |---|---|---|---|
-| `version` | `code-reviewer` binary version to install from releases | `0.8.0` | No |
+| `version` | `code-reviewer` binary version to install from releases | `0.9.0` | No |
 | `model` | Model ID to use for analysis | `gemini-2.5-flash` | No |
 | `focus` | Review focus areas (`bugs`, `security`, `performance`, `style`, `docs`, `all`) | `all` | No |
 | `min-severity` | Minimum severity to report (`low`, `medium`, `high`, `critical`) | `low` | No |
