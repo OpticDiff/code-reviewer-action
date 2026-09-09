@@ -171,7 +171,7 @@ To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an Ope
 
 | Input | Description | Default | Required |
 |---|---|---|---|
-| `version` | `code-reviewer` binary version to install from releases | `0.11.0` | No |
+| `version` | `code-reviewer` binary version to install from releases | `0.12.0` | No |
 | `model` | Model ID to use for analysis | `gemini-2.5-flash` | No |
 | `focus` | Review focus areas (`bugs`, `security`, `performance`, `style`, `docs`, `all`) | `all` | No |
 | `min-severity` | Minimum severity to report (`low`, `medium`, `high`, `critical`) | `low` | No |
@@ -179,6 +179,9 @@ To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an Ope
 | `platform-config` | Path, glob, or comma-separated platform config files (`.yaml`) | `""` | No |
 | `platform-review-md` | Path, glob, or comma-separated platform guideline files (`.md`) | `""` | No |
 | `profile` | Review profile: `platform`, `product`, or `all`. See [Dual-Review Architecture](https://github.com/OpticDiff/code-reviewer/blob/main/docs/PLATFORM-GOVERNANCE.md#dual-review-ci-architecture-platform-gate-vs-product-quality-review). | `""` | No |
+| `platform-model` | Model override for `--profile=platform` (e.g. `gemini-2.5-pro`) | `""` | No |
+| `product-model` | Model override for `--profile=product` (e.g. `gemini-2.5-flash`) | `""` | No |
+| `platform-visibility` | Platform findings visibility: `public` or `security-team-only` | `""` | No |
 | `extra-args` | Additional CLI flags passed directly to `code-reviewer` | `""` | No |
 
 ---
@@ -262,6 +265,7 @@ jobs:
       - uses: OpticDiff/code-reviewer-action@v1
         with:
           profile: platform
+          platform-model: gemini-2.5-pro
           platform-config: ".platform-central/rules/*.yaml"
           platform-review-md: ".platform-central/GUIDELINES.md"
           sarif: platform.sarif
@@ -282,6 +286,7 @@ jobs:
       - uses: OpticDiff/code-reviewer-action@v1
         with:
           profile: product
+          product-model: gemini-2.5-flash
           sarif: product.sarif
         env:
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
