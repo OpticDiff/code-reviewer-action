@@ -171,13 +171,14 @@ To use AWS Bedrock models (e.g. Anthropic Claude, Amazon Titan), point to an Ope
 
 | Input | Description | Default | Required |
 |---|---|---|---|
-| `version` | `code-reviewer` binary version to install from releases | `0.10.0` | No |
+| `version` | `code-reviewer` binary version to install from releases | `0.11.0` | No |
 | `model` | Model ID to use for analysis | `gemini-2.5-flash` | No |
 | `focus` | Review focus areas (`bugs`, `security`, `performance`, `style`, `docs`, `all`) | `all` | No |
 | `min-severity` | Minimum severity to report (`low`, `medium`, `high`, `critical`) | `low` | No |
 | `sarif` | SARIF output file path. When set, SARIF report is generated and uploaded | `""` | No |
 | `platform-config` | Path, glob, or comma-separated platform config files (`.yaml`) | `""` | No |
 | `platform-review-md` | Path, glob, or comma-separated platform guideline files (`.md`) | `""` | No |
+| `profile` | Review profile: `platform`, `product`, or `all`. See [Dual-Review Architecture](https://github.com/OpticDiff/code-reviewer/blob/main/docs/PLATFORM-GOVERNANCE.md#dual-review-ci-architecture-platform-gate-vs-product-quality-review). | `""` | No |
 | `extra-args` | Additional CLI flags passed directly to `code-reviewer` | `""` | No |
 
 ---
@@ -229,6 +230,62 @@ Enforce mandatory platform rules (e.g. security mandates, monotonic severity flo
   env:
     GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Dual-Review Architecture (Platform Gate + Product Quality)
+
+Run two independent, isolated reviews per PR — one enforcing enterprise compliance, the other focused on code quality. Each posts its own comments and SARIF results:
+
+```yaml
+name: Dual Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  platform-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: my-org/platform-governance
+          token: ${{ secrets.PLATFORM_REPO_TOKEN }}
+          path: .platform-central
+      - uses: OpticDiff/code-reviewer-action@v1
+        with:
+          profile: platform
+          platform-config: ".platform-central/rules/*.yaml"
+          platform-review-md: ".platform-central/GUIDELINES.md"
+          sarif: platform.sarif
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  product-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: OpticDiff/code-reviewer-action@v1
+        with:
+          profile: product
+          sarif: product.sarif
+        env:
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ---
