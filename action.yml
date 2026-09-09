@@ -150,6 +150,21 @@ runs:
         INPUT_PLATFORM_VISIBILITY: ${{ inputs.platform-visibility }}
         INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
+        # Validate enum inputs.
+        if [ -n "$INPUT_PROFILE" ]; then
+          case "$INPUT_PROFILE" in
+            platform|product|all) ;;
+            *) echo "::error::Invalid profile '$INPUT_PROFILE'. Must be: platform, product, or all"; exit 1 ;;
+          esac
+        fi
+
+        if [ -n "$INPUT_PLATFORM_VISIBILITY" ]; then
+          case "$INPUT_PLATFORM_VISIBILITY" in
+            public|security-team-only) ;;
+            *) echo "::error::Invalid platform-visibility '$INPUT_PLATFORM_VISIBILITY'. Must be: public or security-team-only"; exit 1 ;;
+          esac
+        fi
+
         ARGS=("--ci")
 
         if [ -n "$INPUT_MODEL" ]; then
