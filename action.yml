@@ -10,7 +10,7 @@ inputs:
   version:
     description: 'code-reviewer version to install'
     required: false
-    default: '0.10.0'
+    default: '0.11.0'
   model:
     description: 'Model ID'
     required: false
@@ -33,6 +33,10 @@ inputs:
     default: ''
   platform-review-md:
     description: 'Path, glob, or comma-separated list of platform markdown guideline files'
+    required: false
+    default: ''
+  profile:
+    description: 'Review profile: platform, product, or all'
     required: false
     default: ''
   extra-args:
@@ -128,6 +132,7 @@ runs:
         INPUT_SARIF: ${{ inputs.sarif }}
         INPUT_PLATFORM_CONFIG: ${{ inputs.platform-config }}
         INPUT_PLATFORM_REVIEW_MD: ${{ inputs.platform-review-md }}
+        INPUT_PROFILE: ${{ inputs.profile }}
         INPUT_EXTRA_ARGS: ${{ inputs.extra-args }}
       run: |
         ARGS=("--ci")
@@ -156,6 +161,10 @@ runs:
           ARGS+=("--platform-review-md" "$INPUT_PLATFORM_REVIEW_MD")
         fi
 
+        if [ -n "$INPUT_PROFILE" ]; then
+          ARGS+=("--profile" "$INPUT_PROFILE")
+        fi
+
         if [ -n "$INPUT_EXTRA_ARGS" ]; then
           eval "EXTRA_FLAGS=($INPUT_EXTRA_ARGS)"
           ARGS+=("${EXTRA_FLAGS[@]}")
@@ -170,4 +179,4 @@ runs:
       continue-on-error: true
       with:
         sarif_file: ${{ inputs.sarif }}
-        category: code-reviewer
+        category: ${{ inputs.profile != '' && format('code-reviewer/{0}', inputs.profile) || 'code-reviewer' }}
