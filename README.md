@@ -253,6 +253,7 @@ jobs:
       contents: read
       pull-requests: write
       security-events: write
+      id-token: write  # Required for GCP Workload Identity Federation
     steps:
       - uses: actions/checkout@v4
         with:
@@ -262,12 +263,17 @@ jobs:
           repository: my-org/platform-governance
           token: ${{ secrets.PLATFORM_REPO_TOKEN }}
           path: .platform-central
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SA }}
       - uses: OpticDiff/code-reviewer-action@v1
         with:
           profile: platform
           platform-model: gemini-2.5-pro
           platform-config: ".platform-central/rules/*.yaml"
           platform-review-md: ".platform-central/GUIDELINES.md"
+          platform-visibility: security-team-only
           sarif: platform.sarif
         env:
           GOOGLE_CLOUD_PROJECT: ${{ secrets.GCP_PROJECT }}
@@ -279,10 +285,15 @@ jobs:
       contents: read
       pull-requests: write
       security-events: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SA }}
       - uses: OpticDiff/code-reviewer-action@v1
         with:
           profile: product
